@@ -21,7 +21,7 @@ Key SQLAlchemy concepts:
   (and their subtasks, and their tasks) are automatically deleted too.
 """
 
-from datetime import datetime
+from datetime import datetime, timezone
 from sqlalchemy import (
     Column, Integer, String, Boolean, DateTime, Date, ForeignKey, Text
 )
@@ -43,8 +43,8 @@ class LearningPlan(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=False)
     description = Column(Text, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
 
     # One plan has many goals. "cascade" means deleting the plan deletes all goals.
     goals = relationship(
@@ -73,7 +73,7 @@ class Goal(Base):
     position = Column(Integer, default=0)      # Used for drag-and-drop ordering
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Navigate back to the parent plan
     plan = relationship("LearningPlan", back_populates="goals")
@@ -105,7 +105,7 @@ class Subtask(Base):
     position = Column(Integer, default=0)
     start_date = Column(Date, nullable=True)
     end_date = Column(Date, nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     goal = relationship("Goal", back_populates="subtasks")
 
@@ -140,6 +140,6 @@ class DailyTask(Base):
     completed = Column(Boolean, default=False)         # ✅ or ⬜
     completed_at = Column(DateTime, nullable=True)     # When it was checked off
     notes = Column(Text, nullable=True)               # Free-form progress notes
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     subtask = relationship("Subtask", back_populates="daily_tasks")

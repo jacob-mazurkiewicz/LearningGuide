@@ -23,7 +23,7 @@ API Structure:
 """
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List
 
@@ -103,7 +103,7 @@ def update_plan(plan_id: int, data: schemas.PlanUpdate, db: Session = Depends(ge
         raise HTTPException(status_code=404, detail="Plan not found")
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(plan, field, value)
-    plan.updated_at = datetime.utcnow()
+    plan.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(plan)
     return plan
@@ -142,7 +142,7 @@ def create_goal(plan_id: int, goal: schemas.GoalCreate, db: Session = Depends(ge
     max_pos = max((g.position for g in plan.goals), default=-1)
     db_goal = models.Goal(**goal.model_dump(), plan_id=plan_id, position=max_pos + 1)
     db.add(db_goal)
-    plan.updated_at = datetime.utcnow()
+    plan.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_goal)
     return db_goal
@@ -156,7 +156,7 @@ def update_goal(goal_id: int, data: schemas.GoalUpdate, db: Session = Depends(ge
         raise HTTPException(status_code=404, detail="Goal not found")
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(goal, field, value)
-    goal.plan.updated_at = datetime.utcnow()
+    goal.plan.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(goal)
     return goal
@@ -168,7 +168,7 @@ def delete_goal(goal_id: int, db: Session = Depends(get_db)):
     goal = db.get(models.Goal, goal_id)
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
-    goal.plan.updated_at = datetime.utcnow()
+    goal.plan.updated_at = datetime.now(timezone.utc)
     db.delete(goal)
     db.commit()
 
@@ -195,7 +195,7 @@ def create_subtask(goal_id: int, subtask: schemas.SubtaskCreate, db: Session = D
     max_pos = max((s.position for s in goal.subtasks), default=-1)
     db_subtask = models.Subtask(**subtask.model_dump(), goal_id=goal_id, position=max_pos + 1)
     db.add(db_subtask)
-    goal.plan.updated_at = datetime.utcnow()
+    goal.plan.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_subtask)
     return db_subtask
@@ -209,7 +209,7 @@ def update_subtask(subtask_id: int, data: schemas.SubtaskUpdate, db: Session = D
         raise HTTPException(status_code=404, detail="Subtask not found")
     for field, value in data.model_dump(exclude_none=True).items():
         setattr(subtask, field, value)
-    subtask.goal.plan.updated_at = datetime.utcnow()
+    subtask.goal.plan.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(subtask)
     return subtask
@@ -221,7 +221,7 @@ def delete_subtask(subtask_id: int, db: Session = Depends(get_db)):
     subtask = db.get(models.Subtask, subtask_id)
     if not subtask:
         raise HTTPException(status_code=404, detail="Subtask not found")
-    subtask.goal.plan.updated_at = datetime.utcnow()
+    subtask.goal.plan.updated_at = datetime.now(timezone.utc)
     db.delete(subtask)
     db.commit()
 
@@ -248,7 +248,7 @@ def create_task(subtask_id: int, task: schemas.DailyTaskCreate, db: Session = De
     max_pos = max((t.position for t in subtask.daily_tasks), default=-1)
     db_task = models.DailyTask(**task.model_dump(), subtask_id=subtask_id, position=max_pos + 1)
     db.add(db_task)
-    subtask.goal.plan.updated_at = datetime.utcnow()
+    subtask.goal.plan.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(db_task)
     return db_task
@@ -266,14 +266,14 @@ def update_task(task_id: int, data: schemas.DailyTaskUpdate, db: Session = Depen
     # If completing the task, record when it was completed
     if "completed" in updates:
         if updates["completed"] and not task.completed:
-            task.completed_at = datetime.utcnow()
+            task.completed_at = datetime.now(timezone.utc)
         elif not updates["completed"]:
             task.completed_at = None
 
     for field, value in updates.items():
         setattr(task, field, value)
 
-    task.subtask.goal.plan.updated_at = datetime.utcnow()
+    task.subtask.goal.plan.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(task)
     return task
@@ -285,7 +285,7 @@ def delete_task(task_id: int, db: Session = Depends(get_db)):
     task = db.get(models.DailyTask, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    task.subtask.goal.plan.updated_at = datetime.utcnow()
+    task.subtask.goal.plan.updated_at = datetime.now(timezone.utc)
     db.delete(task)
     db.commit()
 
@@ -307,7 +307,7 @@ def reorder_goals(plan_id: int, data: schemas.ReorderRequest, db: Session = Depe
         goal = db.get(models.Goal, goal_id)
         if goal and goal.plan_id == plan_id:
             goal.position = position
-    plan.updated_at = datetime.utcnow()
+    plan.updated_at = datetime.now(timezone.utc)
     db.commit()
     return {"ok": True}
 
@@ -322,7 +322,7 @@ def reorder_subtasks(goal_id: int, data: schemas.ReorderRequest, db: Session = D
         subtask = db.get(models.Subtask, subtask_id)
         if subtask and subtask.goal_id == goal_id:
             subtask.position = position
-    goal.plan.updated_at = datetime.utcnow()
+    goal.plan.updated_at = datetime.now(timezone.utc)
     db.commit()
     return {"ok": True}
 
@@ -337,7 +337,7 @@ def reorder_tasks(subtask_id: int, data: schemas.ReorderRequest, db: Session = D
         task = db.get(models.DailyTask, task_id)
         if task and task.subtask_id == subtask_id:
             task.position = position
-    subtask.goal.plan.updated_at = datetime.utcnow()
+    subtask.goal.plan.updated_at = datetime.now(timezone.utc)
     db.commit()
     return {"ok": True}
 
