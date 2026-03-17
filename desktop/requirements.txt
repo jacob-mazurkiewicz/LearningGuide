@@ -1,0 +1,12 @@
+# Desktop app dependencies
+# Run: pip install -r requirements.txt
+
+# Flet — Python framework for building desktop/mobile/web apps.
+# Uses Flutter under the hood but is fully Python-based.
+# Run as desktop: python app.py
+# Run as web:     flet run --web app.py
+flet==0.24.1
+
+# httpx — Modern HTTP client for calling the API.
+# Used by the desktop app to communicate with the FastAPI backend.
+httpx==0.28.0

@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<!--
+  index.html — LearningGuide Web App
+  ====================================
+  This is the main (and only) HTML page. The app is a "Single Page Application" (SPA):
+  - The browser loads this one HTML file
+  - JavaScript (app.js) dynamically updates the page content without full page reloads
+  - The server (FastAPI) handles data storage and retrieval via the API
+
+  External libraries loaded from CDN (Content Delivery Network — no install needed!):
+  - Bootstrap 5: CSS framework for responsive, attractive UI components
+  - Bootstrap Icons: Icon set (search "bootstrap icons" to find icon names)
+  - SortableJS: Drag-and-drop library for reordering items
+
+  Structure of this file:
+  1. <head>: Metadata, styles, and library imports
+  2. <body>:
+     a. Top navigation bar
+     b. Main layout (sidebar + content area)
+     c. Modals (dialog boxes for creating/editing/AI generation)
+  3. Script tags: Load our app.js and the libraries
+-->
+<html lang="en" data-bs-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LearningGuide 📚</title>
+
+  <!-- Bootstrap 5 CSS — provides the grid system, buttons, cards, forms, etc. -->
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+    integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+    crossorigin="anonymous"
+  />
+
+  <!-- Bootstrap Icons — use with <i class="bi bi-NAME"></i> -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+  />
+
+  <!-- Our custom CSS -->
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+
+<body>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       TOP NAVIGATION BAR
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <nav class="navbar navbar-expand-lg bg-primary" data-bs-theme="dark">
+    <div class="container-fluid">
+      <!-- App logo/name -->
+      <a class="navbar-brand fw-bold" href="#">
+        <i class="bi bi-journal-bookmark-fill me-2"></i>LearningGuide
+      </a>
+
+      <!-- Right-side controls -->
+      <div class="d-flex align-items-center gap-2">
+        <!-- Dark/light mode toggle -->
+        <button class="btn btn-sm btn-outline-light" id="theme-toggle" title="Toggle dark mode">
+          <i class="bi bi-moon-fill"></i>
+        </button>
+
+        <!-- Open the interactive API documentation (great for learning!) -->
+        <a class="btn btn-sm btn-outline-light" href="/docs" target="_blank" title="API Documentation">
+          <i class="bi bi-code-slash me-1"></i>API Docs
+        </a>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MAIN LAYOUT — Sidebar + Content
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <div class="d-flex" id="app-layout">
+
+    <!-- ── SIDEBAR ──────────────────────────────────────────────────────── -->
+    <aside id="sidebar" class="d-flex flex-column p-3 border-end">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h6 class="fw-bold mb-0 text-muted text-uppercase small">My Plans</h6>
+        <div class="d-flex gap-1">
+          <!-- AI Generate button -->
+          <button class="btn btn-sm btn-success" id="ai-generate-btn" title="Generate with AI">
+            <i class="bi bi-stars"></i>
+          </button>
+          <!-- New plan button -->
+          <button class="btn btn-sm btn-primary" id="new-plan-btn" title="Create new plan">
+            <i class="bi bi-plus-lg"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- List of plans — populated dynamically by app.js -->
+      <ul class="nav nav-pills flex-column gap-1" id="plan-list">
+        <!-- Plans are inserted here by JavaScript -->
+        <li class="text-center text-muted small py-3" id="no-plans-msg">
+          <i class="bi bi-inbox d-block fs-3 mb-2"></i>
+          No plans yet.<br/>Click <strong>+</strong> to create one!
+        </li>
+      </ul>
+    </aside>
+
+    <!-- ── MAIN CONTENT AREA ─────────────────────────────────────────────── -->
+    <main class="flex-grow-1 overflow-auto" id="main-content">
+
+      <!-- Welcome screen (shown when no plan is selected) -->
+      <div id="welcome-screen" class="d-flex flex-column align-items-center justify-content-center h-100 text-center p-5">
+        <div class="welcome-icon mb-4">📚</div>
+        <h2 class="fw-bold">Welcome to LearningGuide</h2>
+        <p class="text-muted mb-4" style="max-width:480px">
+          Plan your learning journey with goals, subtasks, and daily tasks.
+          Track your progress and celebrate every win!
+        </p>
+        <div class="d-flex gap-3 flex-wrap justify-content-center">
+          <button class="btn btn-primary btn-lg" id="welcome-new-plan-btn">
+            <i class="bi bi-plus-lg me-2"></i>Create a Plan
+          </button>
+          <button class="btn btn-success btn-lg" id="welcome-ai-btn">
+            <i class="bi bi-stars me-2"></i>Generate with AI
+          </button>
+        </div>
+      </div>
+
+      <!-- Plan view (shown when a plan is selected) — hidden initially -->
+      <div id="plan-view" class="p-4" style="display:none">
+
+        <!-- Plan header -->
+        <div class="d-flex align-items-start justify-content-between mb-4 flex-wrap gap-3">
+          <div>
+            <h2 class="fw-bold mb-1" id="plan-title-display"></h2>
+            <p class="text-muted mb-2" id="plan-desc-display"></p>
+
+            <!-- Overall progress bar -->
+            <div class="d-flex align-items-center gap-2">
+              <div class="progress" style="width:200px; height:10px">
+                <div class="progress-bar bg-success" id="plan-progress-bar" style="width:0%"></div>
+              </div>
+              <small class="text-muted" id="plan-progress-text">0% complete</small>
+            </div>
+          </div>
+
+          <!-- Plan action buttons -->
+          <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-primary btn-sm" id="edit-plan-btn">
+              <i class="bi bi-pencil me-1"></i>Edit Plan
+            </button>
+            <button class="btn btn-outline-success btn-sm" id="add-goal-btn">
+              <i class="bi bi-plus-lg me-1"></i>Add Goal
+            </button>
+            <button class="btn btn-outline-danger btn-sm" id="delete-plan-btn">
+              <i class="bi bi-trash me-1"></i>Delete Plan
+            </button>
+          </div>
+        </div>
+
+        <!-- Goals area — each goal is a "column" -->
+        <div id="goals-container" class="goals-grid">
+          <!-- Goals are inserted here dynamically by app.js -->
+          <div id="no-goals-msg" class="col-12 text-center text-muted py-5">
+            <i class="bi bi-bullseye d-block fs-2 mb-2"></i>
+            No goals yet — click <strong>Add Goal</strong> to get started!
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       MODALS (Dialog boxes that pop up over the main content)
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- ── Modal: Create/Edit Plan ─────────────────────────────────────────── -->
+  <div class="modal fade" id="plan-modal" tabindex="-1" aria-labelledby="plan-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="plan-modal-label">New Learning Plan</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="plan-form">
+            <div class="mb-3">
+              <label for="plan-title-input" class="form-label fw-semibold">Plan Title <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="plan-title-input"
+                     placeholder="e.g. Learn Python in 8 Weeks" required maxlength="200" />
+            </div>
+            <div class="mb-3">
+              <label for="plan-desc-input" class="form-label fw-semibold">Description</label>
+              <textarea class="form-control" id="plan-desc-input" rows="3"
+                        placeholder="What do you want to achieve with this plan?"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-plan-btn">
+            <i class="bi bi-check-lg me-1"></i>Save Plan
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Create/Edit Goal ─────────────────────────────────────────── -->
+  <div class="modal fade" id="goal-modal" tabindex="-1" aria-labelledby="goal-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="goal-modal-label">New Goal</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="goal-form">
+            <div class="mb-3">
+              <label for="goal-title-input" class="form-label fw-semibold">Goal Title <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="goal-title-input"
+                     placeholder="e.g. Python Fundamentals" required maxlength="200" />
+            </div>
+            <div class="mb-3">
+              <label for="goal-desc-input" class="form-label fw-semibold">Description</label>
+              <textarea class="form-control" id="goal-desc-input" rows="2"
+                        placeholder="What does this goal cover?"></textarea>
+            </div>
+            <div class="row">
+              <div class="col">
+                <label for="goal-start-input" class="form-label fw-semibold">Start Date</label>
+                <input type="date" class="form-control" id="goal-start-input" />
+              </div>
+              <div class="col">
+                <label for="goal-end-input" class="form-label fw-semibold">End Date</label>
+                <input type="date" class="form-control" id="goal-end-input" />
+              </div>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-goal-btn">
+            <i class="bi bi-check-lg me-1"></i>Save Goal
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Create/Edit Subtask ──────────────────────────────────────── -->
+  <div class="modal fade" id="subtask-modal" tabindex="-1" aria-labelledby="subtask-modal-label" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="subtask-modal-label">New Subtask</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="subtask-form">
+            <div class="mb-3">
+              <label for="subtask-title-input" class="form-label fw-semibold">Subtask Title <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="subtask-title-input"
+                     placeholder="e.g. Variables and Data Types" required maxlength="200" />
+            </div>
+            <div class="mb-3">
+              <label for="subtask-desc-input" class="form-label fw-semibold">Description</label>
+              <textarea class="form-control" id="subtask-desc-input" rows="2"
+                        placeholder="What does this subtask involve?"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-subtask-btn">
+            <i class="bi bi-check-lg me-1"></i>Save Subtask
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: Create/Edit Daily Task ───────────────────────────────────── -->
+  <div class="modal fade" id="task-modal" tabindex="-1" aria-labelledby="task-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="task-modal-label">New Daily Task</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <form id="task-form">
+            <div class="mb-3">
+              <label for="task-title-input" class="form-label fw-semibold">Task Title <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="task-title-input"
+                     placeholder="e.g. Watch Python variables tutorial" required maxlength="200" />
+            </div>
+            <div class="mb-3">
+              <label for="task-desc-input" class="form-label fw-semibold">Description</label>
+              <textarea class="form-control" id="task-desc-input" rows="2"
+                        placeholder="What exactly will you do?"></textarea>
+            </div>
+            <div class="row mb-3">
+              <div class="col">
+                <label for="task-date-input" class="form-label fw-semibold">Scheduled Date</label>
+                <input type="date" class="form-control" id="task-date-input" />
+              </div>
+              <div class="col">
+                <label for="task-minutes-input" class="form-label fw-semibold">
+                  Est. Time (minutes)
+                </label>
+                <input type="number" class="form-control" id="task-minutes-input"
+                       value="30" min="1" max="1440" />
+              </div>
+            </div>
+            <div class="mb-3" id="task-notes-section" style="display:none">
+              <label for="task-notes-input" class="form-label fw-semibold">
+                <i class="bi bi-journal-text me-1"></i>Progress Notes
+              </label>
+              <textarea class="form-control" id="task-notes-input" rows="3"
+                        placeholder="How did it go? What did you learn?"></textarea>
+            </div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="save-task-btn">
+            <i class="bi bi-check-lg me-1"></i>Save Task
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Modal: AI Generator ─────────────────────────────────────────────── -->
+  <div class="modal fade" id="ai-modal" tabindex="-1" aria-labelledby="ai-modal-label" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header bg-success text-white">
+          <h5 class="modal-title" id="ai-modal-label">
+            <i class="bi bi-stars me-2"></i>Generate Learning Plan with AI
+          </h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+
+          <!-- AI not configured warning -->
+          <div class="alert alert-warning d-none" id="ai-no-key-warning">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <strong>No AI provider configured.</strong>
+            Set a <code>GROQ_API_KEY</code> or <code>OPENAI_API_KEY</code> in
+            <code>web/backend/.env</code> to use AI generation.
+            See <a href="https://console.groq.com" target="_blank">Groq</a> for a free key.
+          </div>
+
+          <!-- Generation form -->
+          <div id="ai-form-section">
+            <div class="mb-3">
+              <label for="ai-topic-input" class="form-label fw-semibold fs-6">
+                What do you want to learn or build? <span class="text-danger">*</span>
+              </label>
+              <textarea class="form-control form-control-lg" id="ai-topic-input" rows="2"
+                        placeholder="e.g. Learn Python for data science in 8 weeks&#10;e.g. Build a personal finance tracking app"></textarea>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="ai-weeks-input" class="form-label fw-semibold">Duration (weeks)</label>
+                <input type="number" class="form-control" id="ai-weeks-input" value="4" min="1" max="52" />
+              </div>
+              <div class="col-md-6 mb-3">
+                <label for="ai-hours-input" class="form-label fw-semibold">Hours per day</label>
+                <input type="number" class="form-control" id="ai-hours-input" value="1" min="0.25" max="8" step="0.25" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Loading state -->
+          <div id="ai-loading" class="text-center py-4 d-none">
+            <div class="spinner-border text-success mb-3" role="status"></div>
+            <p class="text-muted">AI is crafting your learning plan…</p>
+          </div>
+
+          <!-- Preview of generated plan -->
+          <div id="ai-preview" class="d-none">
+            <hr />
+            <h6 class="fw-bold mb-3">
+              <i class="bi bi-eye me-1"></i>Preview — Review before importing
+            </h6>
+            <div id="ai-preview-content" class="border rounded p-3 bg-light" style="max-height:350px; overflow-y:auto">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-outline-success" id="ai-generate-submit-btn">
+            <i class="bi bi-stars me-1"></i>Generate Plan
+          </button>
+          <button type="button" class="btn btn-success d-none" id="ai-import-btn">
+            <i class="bi bi-cloud-download me-1"></i>Create This Plan
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast notification (success/error messages) ─────────────────────── -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="app-toast" class="toast align-items-center text-white border-0" role="alert">
+      <div class="d-flex">
+        <div class="toast-body" id="toast-message">Action completed</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       SCRIPTS
+       Load Bootstrap JS (for modals, toasts), SortableJS (drag-and-drop),
+       then our own app.js.
+       Scripts at the bottom of <body> load AFTER the HTML — this means the
+       JavaScript can find HTML elements by ID without waiting.
+       ═══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- Bootstrap JS (includes Popper.js for dropdowns/tooltips) -->
+  <script
+    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+    integrity="sha384-YvpcrYf0tY3lHB60NNkmXc4s9bIOgUxi8T/jzmgAdPqhQzBkq+d5thBiHQQ3Q0kE"
+    crossorigin="anonymous"
+  ></script>
+
+  <!-- SortableJS — drag and drop library -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.3/Sortable.min.js"></script>
+
+  <!-- Our application JavaScript -->
+  <script src="/static/app.js"></script>
+
+</body>
+</html>

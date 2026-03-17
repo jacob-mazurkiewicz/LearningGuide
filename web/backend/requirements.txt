@@ -1,0 +1,33 @@
+# FastAPI is a modern web framework for building APIs with Python.
+# It automatically generates interactive API docs at /docs.
+fastapi==0.115.5
+
+# Uvicorn is the ASGI server that runs the FastAPI app.
+# The "standard" extras add watchfiles for --reload support.
+uvicorn[standard]==0.32.1
+
+# SQLAlchemy is the most popular Python ORM (Object-Relational Mapper).
+# It lets you work with the database using Python classes instead of raw SQL.
+sqlalchemy==2.0.36
+
+# Pydantic is used by FastAPI to validate data coming in and going out of the API.
+pydantic==2.10.3
+
+# python-dotenv loads .env files so you can store secrets (like API keys) outside your code.
+python-dotenv==1.0.1
+
+# httpx is a modern HTTP client for Python — used by FastAPI's TestClient in tests.
+httpx==0.28.0
+
+# pytest is the standard testing framework for Python.
+pytest==8.3.4
+
+# pytest-asyncio allows you to write async test functions.
+pytest-asyncio==0.24.0
+
+# Groq client — for using Groq's free, fast AI API.
+# If you don't use Groq, you can comment this out.
+groq==0.13.1
+
+# OpenAI client — works with OpenAI AND any OpenAI-compatible API (like Ollama's server mode).
+openai==1.57.4
